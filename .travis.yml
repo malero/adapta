@@ -1,0 +1,28 @@
+language: node_js
+node_js:
+  - node
+dist: trusty
+sudo: true
+
+services:
+  - xvfb
+
+addons:
+  chrome: stable
+  apt:
+    packages:
+      - chromium-chromedriver
+
+cache:
+  directories:
+    - node_modules
+
+before_install:
+  - export CHROME_BIN=chromium-browser
+  - export DISPLAY=:99.0
+
+install:
+  - npm install
+
+script:
+  - npm test
