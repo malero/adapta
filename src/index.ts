@@ -1,1 +1,1 @@
-export {Adapter, Type, map, input, output} from './Adapter';
+export {Adapter, Type, map, input, output, TData} from './Adapter';

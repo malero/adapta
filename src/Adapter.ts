@@ -178,20 +178,22 @@ export interface IAdapterConstructor<T = any> {
 }
 
 export abstract class Adapter<T = any> implements IAdapter<T> {
-    protected static adapterId: string;
     protected static schemas: {[key: string]: Schema};
     protected static types: {[key: string]: ITypeConstructor};
 
     public schema(schema: string) {
-        return (this.constructor as IAdapterConstructor).schemas[schema];
+        return (this.constructor as IAdapterConstructor).schemas ? (this.constructor as IAdapterConstructor).schemas[schema] : null;
     }
 
     public type(t: string) {
-        return (this.constructor as IAdapterConstructor).types[t];
+        return (this.constructor as IAdapterConstructor).types ? (this.constructor as IAdapterConstructor).types[t] : null;
     }
 
     public async from(schema: string, inputData: any) {
         const _schema = this.schema(schema);
+        if (!_schema)
+            return;
+
         for (const map of _schema.maps) {
             const t: ITypeConstructor = this.type(map.key) || Type;
             (this as any)[map.key] = new t(access(inputData, map.accessor)).value
@@ -217,6 +219,9 @@ export abstract class Adapter<T = any> implements IAdapter<T> {
     public async to(schema: string) {
         const _schema = this.schema(schema);
         const data: any = {};
+
+        if (!_schema)
+            return data;
 
         for (const map of _schema.maps) {
             setPath(data, map.accessor, access(this, map.key));

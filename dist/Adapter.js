@@ -36,7 +36,7 @@ var __generator = (this && this.__generator) || function (thisArg, body) {
     }
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.Adapter = exports.Schema = exports.output = exports.input = exports.map = exports.type = exports.Type = exports.Map = exports.Transform = exports.access = exports.ETransformDirection = void 0;
+exports.Adapter = exports.Schema = exports.output = exports.input = exports.map = exports.type = exports.Type = exports.Map = exports.Transform = exports.setPath = exports.pathContainer = exports.access = exports.ETransformDirection = void 0;
 var ETransformDirection;
 (function (ETransformDirection) {
     ETransformDirection[ETransformDirection["INPUT"] = 0] = "INPUT";
@@ -53,6 +53,36 @@ function access(data, accessor) {
     return value;
 }
 exports.access = access;
+function pathContainer(data, accessor) {
+    if ([null, undefined].indexOf(data) > -1)
+        data = {};
+    var parts = accessor.split('.');
+    var current = parts.shift();
+    if (current === undefined)
+        return null;
+    if (data[current] === undefined)
+        data[current] = {};
+    if (parts.length === 1)
+        return data[current];
+    return pathContainer(data[current], parts.join('.'));
+}
+exports.pathContainer = pathContainer;
+function setPath(data, accessor, value) {
+    if ([null, undefined].indexOf(data) > -1)
+        return;
+    var parts = accessor.split('.');
+    var current = parts.shift();
+    if (current === undefined)
+        return;
+    if (parts.length > 0 && data[current] === undefined)
+        data[current] = {};
+    if (parts.length === 0) {
+        data[current] = value;
+        return;
+    }
+    setPath(data[current], parts.join('.'), value);
+}
+exports.setPath = setPath;
 var Transform = /** @class */ (function () {
     function Transform(direction, func, schema, from, to) {
         this.direction = direction;
@@ -85,25 +115,25 @@ var Type = /** @class */ (function () {
 exports.Type = Type;
 function type(t) {
     return function (target, key) {
-        target.addType(key, t);
+        target.constructor.addType(key, t);
     };
 }
 exports.type = type;
 function map(schema, accessor) {
     return function (target, key) {
-        target.addMap(new Map(key, schema, accessor));
+        target.constructor.addMap(new Map(key, schema, accessor));
     };
 }
 exports.map = map;
 function input(schema, from, to) {
     return function (target, func) {
-        target.addTransform(new Transform(ETransformDirection.INPUT, func, schema, from, to));
+        target.constructor.addTransform(new Transform(ETransformDirection.INPUT, func, schema, from, to));
     };
 }
 exports.input = input;
 function output(schema, from, to) {
     return function (target, func) {
-        target.addTransform(new Transform(ETransformDirection.OUTPUT, func, schema, from, to));
+        target.constructor.addTransform(new Transform(ETransformDirection.OUTPUT, func, schema, from, to));
     };
 }
 exports.output = output;
@@ -153,9 +183,13 @@ var Schema = /** @class */ (function () {
 exports.Schema = Schema;
 var Adapter = /** @class */ (function () {
     function Adapter() {
-        this.schemas = {};
-        this.types = {};
     }
+    Adapter.prototype.schema = function (schema) {
+        return this.constructor.schemas ? this.constructor.schemas[schema] : null;
+    };
+    Adapter.prototype.type = function (t) {
+        return this.constructor.types ? this.constructor.types[t] : null;
+    };
     Adapter.prototype.from = function (schema, inputData) {
         return __awaiter(this, void 0, void 0, function () {
             var _schema, _i, _a, map_1, t, _b, _c, input_1, inputValues, _d, _e, t, out, i;
@@ -164,9 +198,11 @@ var Adapter = /** @class */ (function () {
                 switch (_g.label) {
                     case 0:
                         _schema = this.schema(schema);
+                        if (!_schema)
+                            return [2 /*return*/];
                         for (_i = 0, _a = _schema.maps; _i < _a.length; _i++) {
                             map_1 = _a[_i];
-                            t = this.types[map_1.key] || Type;
+                            t = this.type(map_1.key) || Type;
                             this[map_1.key] = new t(access(inputData, map_1.accessor)).value;
                         }
                         _b = 0, _c = _schema.inputs;
@@ -208,9 +244,11 @@ var Adapter = /** @class */ (function () {
                     case 0:
                         _schema = this.schema(schema);
                         data = {};
+                        if (!_schema)
+                            return [2 /*return*/, data];
                         for (_i = 0, _a = _schema.maps; _i < _a.length; _i++) {
                             map_2 = _a[_i];
-                            data[map_2.key] = access(this, map_2.accessor);
+                            setPath(data, map_2.accessor, access(this, map_2.key));
                         }
                         _b = 0, _c = _schema.outputs;
                         _g.label = 1;
@@ -226,11 +264,11 @@ var Adapter = /** @class */ (function () {
                     case 2:
                         out = _g.sent();
                         if (output_1.to.length === 1) {
-                            data[output_1.to[0]] = out;
+                            setPath(data, output_1.to[0], out);
                         }
                         else {
                             for (i = 0; i < output_1.to.length; i++) {
-                                data[output_1.to[i]] = out[i];
+                                setPath(data, output_1.to[i], out[i]);
                             }
                         }
                         _g.label = 3;
@@ -242,16 +280,20 @@ var Adapter = /** @class */ (function () {
             });
         });
     };
-    Adapter.prototype.addTransform = function (transform) {
+    Adapter.addTransform = function (transform) {
         this.schema(transform.schema).addTransform(transform);
     };
-    Adapter.prototype.addMap = function (map) {
+    Adapter.addMap = function (map) {
         this.schema(map.schema).addMap(map);
     };
-    Adapter.prototype.addType = function (prop, t) {
+    Adapter.addType = function (prop, t) {
+        if (!this.types)
+            this.types = {};
         this.types[prop] = t;
     };
-    Adapter.prototype.schema = function (schema) {
+    Adapter.schema = function (schema) {
+        if (!this.schemas)
+            this.schemas = {};
         if (!this.schemas[schema])
             this.schemas[schema] = new Schema();
         return this.schemas[schema];
