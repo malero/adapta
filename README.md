@@ -8,7 +8,7 @@ class Person extends Adapter {
     @map(ESchema.STOREFRONT, 'fname')
     first_name: TData<string>;
 
-    @map(ESchema.SALESFORCE, 'Name__Last__c')
+    @map(ESchema.SALESFORCE, 'Name_Last__c')
     @map(ESchema.STOREFRONT, 'lname')
     last_name: TData<string>;
 
