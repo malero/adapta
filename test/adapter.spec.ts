@@ -31,6 +31,9 @@ class AdapterSpec extends Adapter {
     async joinName(firstName: string, lastName: string) {
         return `${firstName} ${lastName}`;
     }
+
+    @map(ESchema.API2, 'undef')
+    undef: TData<string>;
 }
 
 
@@ -62,5 +65,6 @@ describe('Adapter', () => {
 
         const api2Data = await adapta.to(ESchema.API2);
         expect(api2Data.name).toBe('Bob Lewis');
+        expect(Object.keys(api2Data).indexOf('undef')).toBe(-1);
     });
 });

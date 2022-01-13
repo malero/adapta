@@ -224,7 +224,10 @@ export abstract class Adapter<T = any> implements IAdapter<T> {
             return data;
 
         for (const map of _schema.maps) {
-            setPath(data, map.accessor, access(this, map.key));
+            const value: any = access(this, map.key);
+            if (value === undefined) // Don't add undefined properties
+                continue;
+            setPath(data, map.accessor, value);
         }
 
         for (const output of _schema.outputs) {
