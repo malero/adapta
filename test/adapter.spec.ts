@@ -34,6 +34,10 @@ class AdapterSpec extends Adapter {
 
     @map(ESchema.API2, 'undef')
     undef: TData<string>;
+
+    @map(ESchema.DATABASE, 'nestedValue')
+    @map(ESchema.API2, 'nested.value')
+    nested: TData<number>;
 }
 
 
@@ -49,15 +53,20 @@ describe('Adapter', () => {
     it("should work with from and to different schemas", async function () {
         const adapta = new AdapterSpec();
         await adapta.from(ESchema.API2, {
-            name: 'Bob Lewis'
+            name: 'Bob Lewis',
+            nested: {
+                value: 123
+            }
         });
 
         expect(adapta.first_name).toBe('Bob');
         expect(adapta.last_name).toBe('Lewis');
+        expect(adapta.nested).toBe(123);
 
         const dbData = await adapta.to(ESchema.DATABASE);
         expect(dbData.name_first).toBe('Bob');
         expect(dbData.name_last).toBe('Lewis');
+        expect(dbData.nestedValue).toBe(123);
 
         const api1Data = await adapta.to(ESchema.API1);
         expect(api1Data.fname).toBe('Bob');
